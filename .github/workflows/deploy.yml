@@ -33,11 +33,12 @@ jobs:
         id: plan
         run: |
           terraform plan \
-          -var="PUBLIC_key=${{ secrets.AWS_SSH_KEY_PUBLIC }}" \
+          -var="public_key=${{ secrets.AWS_SSH_KEY_PUBLIC }}" \
+          -input=false \
           -out=PLAN 
         working-directory: ./terraform
 
       - name: Terraform apply
         id: apply
-        run: terraform apply PLAN
+        run: terraform apply -input=false PLAN
         working-directory: ./terraform
