@@ -15,6 +15,8 @@ env:
 jobs:
   deploy-infra:
     runs-on: ubuntu-latest
+    outputs:
+      SERVER_PUBLIC_IP: ${{ steps.set-ip.outputs.instance_public_ip }}
     steps:
       - name: checkout the repo
         uses: actions/checkout@v4
@@ -42,3 +44,51 @@ jobs:
         id: apply
         run: terraform apply -input=false PLAN
         working-directory: ./terraform
+
+      - name: Get instance public ip address
+        id: set-ip
+        run: |
+          echo "instance_public_ip=$(terraform -raw public_ip" >> GITHUB_OUTPUT
+        working-directory: ./terraform
+  deploy-app:
+    runs-on: ubuntu-latest
+    needs: deploy-infra
+    steps:
+      - name: checkout the repo
+        uses: actions/checkout@v4
+
+      - name: login to amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push docker image to Amazon ECR
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITRY: my-node-ecr-repo
+          IMAGE_TAG: ${{ github.sha}}
+        run: |
+          docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG .
+          docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
+        working-directory: ./NodeJsApp
+
+      - name: Execute remote SSH commands using password
+        uses: appleboy/ssh-action@v1
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITRY: my-node-ecr-repo
+          IMAGE_TAG: ${{ github.sha}}
+          AWS_DEFAULT_REGION: eu-north-1
+        with:
+          host: ${{ needs.deploy-infra.outputs.SERVER_PUBLIC_IP }}
+          username: ubuntu
+          key: ${{ secrets.AWS_SSH_KEY_PRIVATE }}
+          envs: AWS_SSH_KEY_PRIVATE,REGISTRY,REGISTRY,IMAGE_TAG,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_DEFAULT_REGION,AWS_REGION
+          script: |
+            sudo apt update
+            sudo apt install docker.io -y
+            sudo apt install awscli -y
+            sudo $(aws-ecr-get-login --no-include-email --region eu-north-1)
+            sudo docker stop myappcontainer || true
+            sudo docker rm myappcontainer || true
+            sudo docker pull $REGISTRY/$REPOSITORY:$IMAGE_TAG
+            sudo docker run -d --name myappcontainer -p 80:8080 $REGISTRY/$REPOSITORY:$IMAGE_TAG
+
