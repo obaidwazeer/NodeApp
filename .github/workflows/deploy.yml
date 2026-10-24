@@ -16,7 +16,7 @@ jobs:
   deploy-infra:
     runs-on: ubuntu-latest
     outputs:
-      SERVER_PUBLIC_IP: ${{ steps.set-ip.outputs.instance_public_ip }}
+      server_public_ip: ${{ steps.set-ip.outputs.instance_public_ip }}
     steps:
       - name: checkout the repo
         uses: actions/checkout@v4
@@ -82,7 +82,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_ACCESS_SECRET_KEY }}
           AWS_DEFAULT_REGION: eu-north-1
         with:
-          host: ${{ needs.deploy-infra.outputs.SERVER_PUBLIC_IP }}
+          host: ${{ needs.deploy-infra.outputs.server_public_ip }}
           username: ubuntu
           key: ${{ secrets.AWS_SSH_KEY_PRIVATE }}
           envs: REGISTRY,REPOSITORY,IMAGE_TAG,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_DEFAULT_REGION
