@@ -1,4 +1,4 @@
-Name: CI/CD with Terraform
+name: CI/CD with Terraform
 on:
   push:
     branches:
@@ -15,7 +15,7 @@ env:
 jobs:
   deploy-infra:
     runs-on: ubuntu-latest
-    tasks:
+    steps:
       - name: checkout the repo
         uses: actions/checkout@v4
 
