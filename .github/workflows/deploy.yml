@@ -67,7 +67,9 @@ jobs:
       - name: Read IP Address
         id: read-ip
         run: |
-          echo "ip_address=$(cat server_ip.txt)" >> $GITHUB_OUTPUT
+          CLEAN_IP=$(cat server_ip.txt | awk -F'::' '{print $1}')
+          echo "ip_address=$CLEAN_IP" >> $GITHUB_OUTPUT
+
 
       - name: login to amazon ECR
         id: login-ecr
