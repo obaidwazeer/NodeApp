@@ -48,7 +48,9 @@ jobs:
       - name: Get instance public ip address
         id: set-ip
         run: |
-          echo "instance_public_ip=$(terraform output -raw public_ip)" >> $GITHUB_OUTPUT
+          # Fetch the raw output, filter out anything containing debug colons, and save it
+          CLEAN_IP=$(terraform output -raw public_ip | grep -v "::")
+          echo "instance_public_ip=$CLEAN_IP" >> $GITHUB_OUTPUT
         working-directory: ./terraform
   deploy-app:
     runs-on: ubuntu-latest
