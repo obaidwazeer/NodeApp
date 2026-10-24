@@ -48,7 +48,7 @@ jobs:
       - name: Get instance public ip address
         id: set-ip
         run: |
-          echo "instance_public_ip=$(terraform -raw public_ip" >> GITHUB_OUTPUT
+          echo "instance_public_ip=$(terraform output -raw public_ip" >> GITHUB_OUTPUT
         working-directory: ./terraform
   deploy-app:
     runs-on: ubuntu-latest
