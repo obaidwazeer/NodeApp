@@ -7,7 +7,7 @@ variable "instance_type" {
 }
 
 variable "key_name" {
-  
+  default = "my-ec2-ssh-key-name"
 }
 
 variable "public_key" {
