@@ -23,34 +23,50 @@ provider "aws" {
 resource "aws_security_group" "main" {
     egress = [
         {
-            from_port        = 0
-            to_port          = 0
-            protocol         = "-1"
-            cidr_blocks      = ["0.0.0.0/0"]
-            ipv6_cidr_blocks = ["::/0"]
-        }
+        from_port        = 0
+        to_port          = 0
+        protocol         = "-1"
+        cidr_blocks      = ["0.0.0.0/0"]
+        ipv6_cidr_blocks = ["::/0"]
+        description      = "Allow all outbound traffic"
+        prefix_list_ids  = []
+        security_groups  = []
+        self             = false
+      }
     ]
     ingress = [ 
         {
-            from_port        = 22
-            to_port          = 22
-            protocol         = "ssh"
-            cidr_blocks      = ["0.0.0.0/0"]
-            ipv6_cidr_blocks = ["::/0"]
+          from_port        = 22
+          to_port          = 22
+          protocol         = "tcp" 
+          cidr_blocks      = ["0.0.0.0/0"]
+          ipv6_cidr_blocks = ["::/0"]
+          description      = "Allow SSH"
+          prefix_list_ids  = []
+          security_groups  = []
+          self             = false
         },
         {
-            from_port        = 80
-            to_port          = 80
-            protocol         = "tcp"
-            cidr_blocks      = ["0.0.0.0/0"]
-            ipv6_cidr_blocks = ["::/0"]
+          from_port        = 80
+          to_port          = 80
+          protocol         = "tcp"
+          cidr_blocks      = ["0.0.0.0/0"]
+          ipv6_cidr_blocks = ["::/0"]
+          description      = "Allow HTTP"
+          prefix_list_ids  = []
+          security_groups  = []
+          self             = false
         },
         {
-            from_port        = 443
-            to_port          = 443
-            protocol         = "tcp"
-            cidr_blocks      = ["0.0.0.0/0"]
-            ipv6_cidr_blocks = ["::/0"]
+          from_port        = 443
+          to_port          = 443
+          protocol         = "tcp"
+          cidr_blocks      = ["0.0.0.0/0"]
+          ipv6_cidr_blocks = ["::/0"]
+          description      = "Allow HTTPS"
+          prefix_list_ids  = []
+          security_groups  = []
+          self             = false
         }
      ]
   
@@ -71,12 +87,12 @@ resource "aws_iam_instance_profile" "ec2_profile" {
 # create an ec2 resource
 resource "aws_instance" "node_app_instance" {
     ami = "ami-021aaf3749be66813"
-    region = var.region
     instance_type = var.instance_type
     associate_public_ip_address = true
-    security_groups = aws_security_group.main.id
+    vpc_security_group_ids      = [aws_security_group.main.id]
     key_name = aws_key_pair.deployer.key_name
     iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
+    
     tags = {
       Name = "Node App"
     }
