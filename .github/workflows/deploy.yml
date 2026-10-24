@@ -67,8 +67,12 @@ jobs:
       - name: Read IP Address
         id: read-ip
         run: |
-          CLEAN_IP=$(cat server_ip.txt | awk -F'::' '{print $1}')
-          echo "ip_address=$CLEAN_IP" >> $GITHUB_OUTPUT
+          # 1. Strip out the wrapper text cleanly
+          RAW_IP=$(cat server_ip.txt | awk -F'::' '{print $1}')
+          
+          # 2. Write it using a clear, quote-wrapped formatting string
+          echo "ip_address=${RAW_IP}" >> "$GITHUB_OUTPUT"
+
 
 
       - name: login to amazon ECR
