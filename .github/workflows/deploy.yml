@@ -65,12 +65,11 @@ jobs:
       - name: Build, tag, and push docker image to Amazon ECR
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          REPOSITRY: my-node-ecr-repo
+          REPOSITORY: my-node-ecr-repo
           IMAGE_TAG: ${{ github.sha}}
         run: |
           docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG .
           docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
-        working-directory: ./NodeJsApp
 
       - name: Execute remote SSH commands using password
         uses: appleboy/ssh-action@v1
@@ -83,7 +82,7 @@ jobs:
           host: ${{ needs.deploy-infra.outputs.SERVER_PUBLIC_IP }}
           username: ubuntu
           key: ${{ secrets.AWS_SSH_KEY_PRIVATE }}
-          envs: AWS_SSH_KEY_PRIVATE,REGISTRY,REGISTRY,IMAGE_TAG,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_DEFAULT_REGION,AWS_REGION
+          envs: AWS_SSH_KEY_PRIVATE,REGISTRY,REPOSITORY,IMAGE_TAG,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_DEFAULT_REGION,AWS_REGION
           script: |
             sudo apt update
             sudo apt install docker.io -y
