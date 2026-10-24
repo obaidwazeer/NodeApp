@@ -15,8 +15,6 @@ env:
 jobs:
   deploy-infra:
     runs-on: ubuntu-latest
-    outputs:
-      server_public_ip: ${{ steps.set-ip.outputs.instance_public_ip }}
     steps:
       - name: checkout the repo
         uses: actions/checkout@v4
@@ -27,12 +25,10 @@ jobs:
           terraform-wrapper: false
 
       - name: initialize Terraform
-        id: init
         run: terraform init 
         working-directory: ./terraform
       
       - name: plan Terraform
-        id: plan
         run: |
           terraform plan \
           -var="public_key=${{ secrets.AWS_SSH_KEY_PUBLIC }}" \
@@ -41,16 +37,19 @@ jobs:
         working-directory: ./terraform
 
       - name: Terraform apply
-        id: apply
         run: terraform apply -input=false PLAN
         working-directory: ./terraform
 
-      - name: Get instance public ip address
-        id: set-ip
+      - name: Save IP to File
         run: |
-          CLEAN_IP=$(terraform output -raw public_ip | grep -v "::")
-          echo "instance_public_ip=$CLEAN_IP" >> $GITHUB_OUTPUT
+          terraform output -raw public_ip > server_ip.txt
         working-directory: ./terraform
+
+      - name: Upload IP Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ec2-ip-address
+          path: ./terraform/server_ip.txt
 
   deploy-app:
     runs-on: ubuntu-latest
@@ -58,6 +57,17 @@ jobs:
     steps:
       - name: checkout the repo
         uses: actions/checkout@v4
+
+      - name: Download IP Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ec2-ip-address
+          path: .
+
+      - name: Read IP Address
+        id: read-ip
+        run: |
+          echo "ip_address=$(cat server_ip.txt)" >> $GITHUB_OUTPUT
 
       - name: login to amazon ECR
         id: login-ecr
@@ -82,7 +92,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_ACCESS_SECRET_KEY }}
           AWS_DEFAULT_REGION: eu-north-1
         with:
-          host: ${{ needs.deploy-infra.outputs.server_public_ip }}
+          host: ${{ steps.read-ip.outputs.ip_address }}
           username: ubuntu
           key: ${{ secrets.AWS_SSH_KEY_PRIVATE }}
           envs: REGISTRY,REPOSITORY,IMAGE_TAG,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_DEFAULT_REGION
@@ -90,9 +100,7 @@ jobs:
             sudo apt update
             sudo apt install docker.io -y
             sudo apt install awscli -y
-            
             aws ecr get-login-password --region eu-north-1 | sudo docker login --username AWS --password-stdin $REGISTRY
-            
             sudo docker stop myappcontainer || true
             sudo docker rm myappcontainer || true
             sudo docker pull $REGISTRY/$REPOSITORY:$IMAGE_TAG
