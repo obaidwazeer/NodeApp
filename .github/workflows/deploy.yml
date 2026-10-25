@@ -24,7 +24,7 @@ jobs:
       - name: setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
-          terraform-wrapper: false
+          terraform_wrapper: false
 
       - name: initialize Terraform
         id: init
@@ -45,11 +45,20 @@ jobs:
         run: terraform apply -input=false PLAN
         working-directory: ./terraform
 
-      - name: Get instance public ip address
+      - name: Get instance public IP address
         id: set-ip
+        shell: bash
         run: |
-          CLEAN_IP=$(terraform output -raw public_ip | grep -v "::")
-          echo "instance_public_ip=$CLEAN_IP" >> $GITHUB_OUTPUT
+          IP="$(terraform output -raw public_ip)"
+
+          echo "Terraform public IP: $IP"
+
+          if [[ ! "$IP" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+            echo "::error::Terraform did not return a valid IPv4 address."
+            exit 1
+          fi
+
+          echo "instance_public_ip=$IP" >> "$GITHUB_OUTPUT"
         working-directory: ./terraform
 
   deploy-app:
