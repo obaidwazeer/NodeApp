@@ -1,0 +1,96 @@
+name: Terraform Destroy Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_destroy:
+        description: "Are you sure you want to destroy the Terraform-managed infrastructure?"
+        required: true
+        type: choice
+        options:
+          - "no"
+          - "yes"
+        default: "no"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-destroy-eu-north-1
+  cancel-in-progress: false
+
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_ACCESS_SECRET_KEY }}
+  AWS_DEFAULT_REGION: eu-north-1
+  AWS_REGION: eu-north-1
+  TF_VAR_public_key: ${{ secrets.AWS_SSH_KEY_PUBLIC }}
+  TF_IN_AUTOMATION: "true"
+
+jobs:
+  plan-destroy:
+    if: ${{ inputs.confirm_destroy == 'yes' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_wrapper: false
+
+      - name: Initialize Terraform
+        run: terraform init -input=false
+        working-directory: ./terraform
+
+      - name: Create destroy plan
+        run: |
+          terraform plan \
+            -destroy \
+            -input=false \
+            -out=destroy.tfplan
+        working-directory: ./terraform
+
+      - name: Display destroy plan
+        run: terraform show -no-color destroy.tfplan
+        working-directory: ./terraform
+
+      - name: Upload destroy plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-destroy-plan
+          path: terraform/destroy.tfplan
+          if-no-files-found: error
+          retention-days: 1
+
+  apply-destroy:
+    if: ${{ inputs.confirm_destroy == 'yes' }}
+    needs: plan-destroy
+    runs-on: ubuntu-latest
+
+    environment: terraform-destroy
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_wrapper: false
+
+      - name: Initialize Terraform
+        run: terraform init -input=false
+        working-directory: ./terraform
+
+      - name: Download destroy plan
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-destroy-plan
+          path: ./terraform
+
+      - name: Apply destroy plan
+        run: terraform apply -input=false destroy.tfplan
+        working-directory: ./terraform
